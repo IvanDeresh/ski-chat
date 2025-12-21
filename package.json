@@ -1,0 +1,30 @@
+{
+    "name": "ski-chat",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node index.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/IvanDeresh/ski-chat.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/IvanDeresh/ski-chat/issues"
+    },
+    "homepage": "https://github.com/IvanDeresh/ski-chat#readme",
+    "dependencies": {
+        "dotenv": "^17.2.3",
+        "fs": "^0.0.1-security",
+        "input": "^1.0.1",
+        "prebuilt-tdlib": "^0.1008058.0",
+        "tdl": "^8.0.2",
+        "telegram": "^2.26.22"
+    }
+}

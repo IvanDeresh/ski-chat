@@ -8,6 +8,8 @@ dotenv.config();
 
 const apiId = Number(process.env.API_ID);
 const apiHash = process.env.API_HASH;
+const chatId = BigInt(process.env.CHAT_ID);
+
 const SESSION_FILE = "./session.txt";
 const DB_FILE = "./contacted.json";
 
@@ -57,7 +59,20 @@ console.log("👂 Listening ski chats...");
 
 client.addEventHandler(async (event) => {
     const msg = event.message;
+    console.log(msg);
     if (!msg?.text) return;
+
+    const peer = msg.peerId;
+
+    if (peer.className === "PeerChat") {
+        if (peer.chatId.value !== chatId) return;
+    } else if (peer.className === "PeerChannel") {
+        if (peer.channelId.value !== chatId) return;
+    }
+
+    // console.log(peer.className);
+    // console.log(peer?.chatId?.value, chatId);
+    // console.log(peer?.channelId?.value, chatId);
 
     const text = msg.text.toLowerCase();
     console.log("💬 Message:", text);
@@ -65,11 +80,9 @@ client.addEventHandler(async (event) => {
     if (!KEYWORDS.some((k) => text.includes(k))) return;
 
     const sender = await msg.getSender();
-    if (!sender || sender.bot) return;
+    if (!sender || sender.bot || sender.self) return;
 
     const userId = sender.id.value;
-
-    if (sender.self) return;
 
     if (contacted[userId]) {
         console.log("⏭ Already contacted:", userId);

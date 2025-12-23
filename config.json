@@ -1,0 +1,16 @@
+{
+    "enabled": true,
+    "chatId": "4991225150",
+    "keywords": ["asdassada"],
+    "templates": [
+        "Hi! I'm a snowboard instructor 🏂",
+        "Hey! I offer private snowboard lessons ❄️",
+        "Hi! I'm a snowboard instructor 🏂",
+        "Hey! I offer private snowboard lessons ❄️"
+    ],
+    "dailyLimit": 10,
+    "delay": {
+        "min": 30000,
+        "max": 60000
+    }
+}

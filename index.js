@@ -8,27 +8,25 @@ dotenv.config();
 
 const apiId = Number(process.env.API_ID);
 const apiHash = process.env.API_HASH;
-const chatId = BigInt(process.env.CHAT_ID);
 
 const SESSION_FILE = "./session.txt";
 const DB_FILE = "./contacted.json";
 
-const KEYWORDS = [
-    "snowboard",
-    "snowboarding",
-    "learn snowboarding",
-    "learn snowboard",
-    "snowboard lessons",
-    "snowboard instructor",
-    "snowboard coach",
-    "beginner snowboard",
-    "first time snowboarding",
-    "go snowboarding",
-];
+function loadConfig() {
+    return JSON.parse(fs.readFileSync("./config.json", "utf8"));
+}
 
-const DAILY_LIMIT = 10;
-const MIN_DELAY = 30 * 1000;
-const MAX_DELAY = 60 * 1000;
+let config = loadConfig();
+
+if (!config.enabled) {
+    console.log("⛔ Worker disabled. Waiting...");
+}
+
+const KEYWORDS = config.keywords;
+const chatId = BigInt(config?.chatId);
+const DAILY_LIMIT = Number(config.dailyLimit);
+const MIN_DELAY = Number(config.delay.min);
+const MAX_DELAY = Number(config.delay.max);
 
 const stringSession = new StringSession(
     fs.existsSync(SESSION_FILE) ? fs.readFileSync(SESSION_FILE, "utf8") : ""
@@ -49,15 +47,22 @@ if (!fs.existsSync(SESSION_FILE)) {
     });
 
     fs.writeFileSync(SESSION_FILE, client.session.save());
+    console.log(chatId);
+
     console.log("✅ Session saved");
 } else {
     await client.connect();
+    console.log(chatId);
+
     console.log("✅ Session loaded");
 }
 
 console.log("👂 Listening ski chats...");
 
 client.addEventHandler(async (event) => {
+    config = loadConfig();
+    if (!config.enabled) return;
+
     const msg = event.message;
     console.log(msg);
     if (!msg?.text) return;
@@ -65,8 +70,10 @@ client.addEventHandler(async (event) => {
     const peer = msg.peerId;
 
     if (peer.className === "PeerChat") {
+        console.log(peer.chatId.value);
         if (peer.chatId.value !== chatId) return;
     } else if (peer.className === "PeerChannel") {
+        console.log(peer.channelId.value);
         if (peer.channelId.value !== chatId) return;
     }
 
@@ -116,18 +123,7 @@ client.addEventHandler(async (event) => {
 }, new NewMessage({}));
 
 function getTemplate(name = "") {
-    const templates = [
-        `Hi${name ? ", " + name : ""}! 👋
-I noticed your message in the chat.
-I'm a snowboard instructor 🏂
-I offer private snowboard lessons.
-Feel free to message me if you're interested 🙂`,
-
-        `Hey!
-Saw that you're interested in snowboarding ❄️
-I'm a coach and help with learning and technique.
-Happy to answer questions or do a lesson 😉`,
-    ];
+    const templates = config?.templates;
 
     return templates[Math.floor(Math.random() * templates.length)];
 }

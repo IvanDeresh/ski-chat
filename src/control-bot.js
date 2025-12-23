@@ -1,11 +1,12 @@
 import TelegramBot from "node-telegram-bot-api";
 import fs from "fs";
 import dotenv from "dotenv";
+import { loadConfig } from "./loadConfig";
 dotenv.config();
 
 const BOT_TOKEN = process.env.CONTROL_BOT_TOKEN;
 const ADMIN_ID = Number(process.env.ADMIN_ID);
-const CONFIG_FILE = "./config.json";
+const CONFIG_FILE = "../config.json";
 
 if (!BOT_TOKEN || !ADMIN_ID) {
     console.error("❌ CONTROL_BOT_TOKEN or ADMIN_ID missing");
@@ -13,23 +14,6 @@ if (!BOT_TOKEN || !ADMIN_ID) {
 }
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
-
-function loadConfig() {
-    if (!fs.existsSync(CONFIG_FILE)) {
-        const baseConfig = {
-            enabled: false,
-            chatId: null,
-            keywords: [],
-            templates: [],
-            dailyLimit: 10,
-            delay: { min: 30000, max: 60000 },
-        };
-        fs.writeFileSync(CONFIG_FILE, JSON.stringify(baseConfig, null, 2));
-        return baseConfig;
-    }
-
-    return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
-}
 
 function saveConfig(config) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));

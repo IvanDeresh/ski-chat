@@ -1,29 +1,38 @@
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import { NewMessage } from "telegram/events/index.js";
+import path from "path";
+import { fileURLToPath } from "url";
 import input from "input";
 import fs from "fs";
+import { loadConfig as lc } from "./loadConfig.js";
 import dotenv from "dotenv";
 dotenv.config();
 
 const apiId = Number(process.env.API_ID);
 const apiHash = process.env.API_HASH;
 
-const SESSION_FILE = "./session.txt";
-const DB_FILE = "./contacted.json";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const CONFIG_FILE = path.join(__dirname, "../config.json");
+const SESSION_FILE = path.join(__dirname, "../session.txt");
+const DB_FILE = path.join(__dirname, "../contacted.json");
 
 function loadConfig() {
-    return JSON.parse(fs.readFileSync("./config.json", "utf8"));
+    lc();
+    return JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
 }
 
 let config = loadConfig();
-
+const chatId = BigInt(config.chatId);
+console.log(config);
 if (!config.enabled) {
     console.log("⛔ Worker disabled. Waiting...");
+    throw new Error("Worker disabled. Waiting.");
 }
 
 const KEYWORDS = config.keywords;
-const chatId = BigInt(config?.chatId);
 const DAILY_LIMIT = Number(config.dailyLimit);
 const MIN_DELAY = Number(config.delay.min);
 const MAX_DELAY = Number(config.delay.max);
@@ -52,7 +61,6 @@ if (!fs.existsSync(SESSION_FILE)) {
     console.log("✅ Session saved");
 } else {
     await client.connect();
-    console.log(chatId);
 
     console.log("✅ Session loaded");
 }

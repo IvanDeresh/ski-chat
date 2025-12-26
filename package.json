@@ -5,6 +5,7 @@
     "main": "index.js",
     "type": "module",
     "scripts": {
+        "start:all": "concurrently \"npm run dev:bot\" \"npm run dev:client\"",
         "dev:client": "node src/index.js",
         "dev:bot": "node src/control-bot.js",
         "test": "echo \"Error: no test specified\" && exit 1"
@@ -30,5 +31,8 @@
         "telegram": "^2.26.22",
         "url": "^0.11.4",
         "uuid": "^9.0.1"
+    },
+    "devDependencies": {
+        "concurrently": "^9.2.1"
     }
 }

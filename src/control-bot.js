@@ -1,39 +1,56 @@
-import TelegramBot from "node-telegram-bot-api";
+import { TelegramClient } from "telegram";
+import { StringSession } from "telegram/sessions/index.js";
+import { NewMessage } from "telegram/events/index.js";
 import fs from "fs";
-import dotenv from "dotenv";
-import { loadConfig } from "./loadConfig.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+import { loadConfig } from "./loadConfig.js";
+
 dotenv.config();
 
+const apiId = Number(process.env.API_ID);
+const apiHash = process.env.API_HASH;
 const BOT_TOKEN = process.env.CONTROL_BOT_TOKEN;
 const ADMIN_ID = Number(process.env.ADMIN_ID);
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-const CONFIG_FILE = path.resolve(__dirname, "../config.json");
-
-if (!BOT_TOKEN || !ADMIN_ID) {
-    console.error("❌ CONTROL_BOT_TOKEN or ADMIN_ID missing");
+if (!BOT_TOKEN || !ADMIN_ID || !apiId || !apiHash) {
+    console.error("❌ Missing environment variables");
     process.exit(1);
 }
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const CONFIG_FILE = path.resolve(__dirname, "../config.json");
+
+const stringSession = new StringSession("");
+const client = new TelegramClient(stringSession, apiId, apiHash, {
+    connectionRetries: 5,
+});
+
+await client.start({
+    botAuthToken: BOT_TOKEN,
+});
+
+console.log("🤖 Control bot started");
 
 function saveConfig(config) {
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
-function isAdmin(msg) {
-    return msg.from.id === ADMIN_ID;
-}
+client.addEventHandler(async (event) => {
+    const msg = event.message;
+    if (!msg?.text) return;
 
-bot.onText(/\/start/, (msg) => {
-    if (!isAdmin(msg)) return;
+    const sender = await msg.getSender();
+    if (!sender || sender.id.value !== BigInt(ADMIN_ID)) return;
 
-    bot.sendMessage(
-        msg.chat.id,
-        `🤖 Control Bot Ready
+    const text = msg.text.toLowerCase();
+    const config = loadConfig();
+
+    if (text.startsWith("/start")) {
+        await client.sendMessage(sender, {
+            message: `🤖 Control Bot Ready
 
 Commands:
 /on – enable worker
@@ -42,110 +59,71 @@ Commands:
 /setchat <chatId>
 /keywords a, b, c
 /templates – set templates
-/help - help
-`
-    );
-});
+/help - help`,
+        });
+    }
 
-bot.onText(/\/on/, (msg) => {
-    if (!isAdmin(msg)) return;
+    if (text.startsWith("/on")) {
+        config.enabled = true;
+        saveConfig(config);
+        await client.sendMessage(sender, { message: "✅ Worker ENABLED" });
+    }
 
-    const config = loadConfig();
-    config.enabled = true;
-    saveConfig(config);
+    if (text.startsWith("/off")) {
+        config.enabled = false;
+        saveConfig(config);
+        await client.sendMessage(sender, { message: "⛔ Worker DISABLED" });
+    }
 
-    bot.sendMessage(msg.chat.id, "✅ Worker ENABLED");
-});
-
-bot.onText(/\/off/, (msg) => {
-    if (!isAdmin(msg)) return;
-    const config = loadConfig();
-    config.enabled = false;
-    saveConfig(config);
-
-    bot.sendMessage(msg.chat.id, "⛔ Worker DISABLED");
-});
-
-bot.onText(/\/status/, (msg) => {
-    if (!isAdmin(msg)) return;
-
-    const config = loadConfig();
-
-    bot.sendMessage(
-        msg.chat.id,
-        `📊 Status
+    if (text.startsWith("/status")) {
+        await client.sendMessage(sender, {
+            message: `📊 Status
 
 Enabled: ${config.enabled}
 Chat ID: ${config.chatId}
 Daily limit: ${config.dailyLimit}
 
-Keywords:
-${config.keywords.join(", ") || "—"}
+Keywords: ${config.keywords.join(", ") || "—"}
+Templates: ${config.templates.length}`,
+        });
+    }
 
-Templates:
-${config.templates.length}
-`
-    );
-});
+    if (text.startsWith("/setchat")) {
+        const chatId = msg.text.split(" ")[1];
+        config.chatId = chatId;
+        saveConfig(config);
+        await client.sendMessage(sender, { message: `✅ Chat ID set to ${chatId}` });
+    }
 
-bot.onText(/\/setchat (.+)/, (msg, match) => {
-    if (!isAdmin(msg)) return;
+    if (text.startsWith("/keywords")) {
+        const list = msg.text
+            .split(" ")
+            .slice(1)
+            .join(" ")
+            .split(",")
+            .map((k) => k.trim().toLowerCase())
+            .filter(Boolean);
 
-    const chatId = match[1].trim();
-    const config = loadConfig();
-    config.chatId = chatId;
-    saveConfig(config);
+        config.keywords = list;
+        saveConfig(config);
+        await client.sendMessage(sender, { message: `✅ Keywords updated (${list.length})` });
+    }
 
-    bot.sendMessage(msg.chat.id, `✅ Chat ID set to ${chatId}`);
-});
+    if (text.startsWith("/templates")) {
+        config.templates = [];
+        saveConfig(config);
+        await client.sendMessage(sender, {
+            message: "✏️ Send templates, each message = one template. Send /done when finished.",
+        });
+    }
 
-bot.onText(/\/keywords (.+)/, (msg, match) => {
-    if (!isAdmin(msg)) return;
+    if (text.startsWith("/done")) {
+        await client.sendMessage(sender, { message: "✅ Templates saved" });
+    }
 
-    const list = match[1]
-        .split(",")
-        .map((k) => k.trim().toLowerCase())
-        .filter(Boolean);
-
-    const config = loadConfig();
-    config.keywords = list;
-    saveConfig(config);
-
-    bot.sendMessage(msg.chat.id, `✅ Keywords updated (${list.length})`);
-});
-
-let waitingForTemplates = false;
-
-bot.onText(/\/templates/, (msg) => {
-    if (!isAdmin(msg)) return;
-
-    waitingForTemplates = true;
-    bot.sendMessage(
-        msg.chat.id,
-        `✏️ Send templates.
-Each message = one template.
-Send /done when finished.`
-    );
-});
-
-bot.onText(/\/done/, (msg) => {
-    if (!isAdmin(msg)) return;
-    if (!waitingForTemplates) return;
-
-    waitingForTemplates = false;
-    bot.sendMessage(msg.chat.id, "✅ Templates saved");
-});
-
-bot.on("message", (msg) => {
-    if (!isAdmin(msg)) return;
-    if (!waitingForTemplates) return;
-    if (msg.text.startsWith("/")) return;
-
-    const config = loadConfig();
-    config.templates.push(msg.text);
-    saveConfig(config);
-
-    bot.sendMessage(msg.chat.id, "➕ Template added");
-});
-
-console.log("🤖 Control bot started");
+    if (!text.startsWith("/") && config.templates !== undefined) {
+        config.templates.push(msg.text);
+        saveConfig(config);
+        await client.sendMessage(sender, { message: "➕ Template added" });
+    }
+}, new NewMessage({}));

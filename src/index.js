@@ -1,12 +1,13 @@
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import { NewMessage } from "telegram/events/index.js";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import input from "input";
-import fs from "fs";
-import { loadConfig as lc } from "./loadConfig.js";
 import dotenv from "dotenv";
+import { loadConfig as lc } from "./loadConfig.js";
+
 dotenv.config();
 
 const apiId = Number(process.env.API_ID);
@@ -25,16 +26,16 @@ function loadConfig() {
 }
 
 let config = loadConfig();
-const chatId = BigInt(config.chatId);
 if (!config.enabled) {
     console.log("⛔ Worker disabled. Waiting...");
     throw new Error("Worker disabled. Waiting.");
 }
 
+const chatId = BigInt(config.chatId);
 const KEYWORDS = config.keywords;
-const DAILY_LIMIT = Number(config.dailyLimit);
-const MIN_DELAY = Number(config.delay.min);
-const MAX_DELAY = Number(config.delay.max);
+const DAILY_LIMIT = config.dailyLimit;
+const MIN_DELAY = config.delay.min;
+const MAX_DELAY = config.delay.max;
 
 const stringSession = new StringSession(
     fs.existsSync(SESSION_FILE) ? fs.readFileSync(SESSION_FILE, "utf8") : ""
@@ -55,15 +56,13 @@ if (!fs.existsSync(SESSION_FILE)) {
     });
 
     fs.writeFileSync(SESSION_FILE, client.session.save());
-
     console.log("✅ Session saved");
 } else {
     await client.connect();
-
     console.log("✅ Session loaded");
 }
 
-console.log("👂 Listening ski chats...");
+console.log("👂 Listening to chat messages...");
 
 client.addEventHandler(async (event) => {
     config = loadConfig();
@@ -73,52 +72,33 @@ client.addEventHandler(async (event) => {
     if (!msg?.text) return;
 
     const peer = msg.peerId;
-
-    if (peer.className === "PeerChat") {
-        if (peer.chatId.value !== chatId) return;
-    } else if (peer.className === "PeerChannel") {
-        if (peer.channelId.value !== chatId) return;
-    }
-
-    // console.log(peer.className);
-    // console.log(peer?.chatId?.value, chatId);
-    // console.log(peer?.channelId?.value, chatId);
+    if (
+        (peer.className === "PeerChat" && peer.chatId.value !== chatId) ||
+        (peer.className === "PeerChannel" && peer.channelId.value !== chatId)
+    )
+        return;
 
     const text = msg.text.toLowerCase();
-    console.log("💬 Message:", text);
-
     if (!KEYWORDS.some((k) => text.includes(k))) return;
 
     const sender = await msg.getSender();
     if (!sender || sender.bot || sender.self) return;
 
     const userId = sender.id.value;
-
-    if (contacted[userId]) {
-        console.log("⏭ Already contacted:", userId);
-        return;
-    }
+    if (contacted[userId]) return;
 
     const today = new Date().toDateString();
     const todayCount = Object.values(contacted).filter((v) => v.date === today).length;
-
-    if (todayCount >= DAILY_LIMIT) {
-        console.log("⛔ Daily limit reached");
-        return;
-    }
+    if (todayCount >= DAILY_LIMIT) return;
 
     const delayMs = random(MIN_DELAY, MAX_DELAY);
     console.log(`⏳ Waiting ${Math.round(delayMs / 1000)}s before DM`);
     await delay(delayMs);
 
     try {
-        await client.sendMessage(sender, {
-            message: getTemplate(sender.firstName),
-        });
-
+        await client.sendMessage(sender, { message: getTemplate(sender.firstName) });
         contacted[userId] = { date: today };
         fs.writeFileSync(DB_FILE, JSON.stringify(contacted, null, 2));
-
         console.log("✅ DM sent to", sender.firstName || userId);
     } catch (e) {
         console.error("❌ Send error:", e.message);
@@ -126,13 +106,12 @@ client.addEventHandler(async (event) => {
 }, new NewMessage({}));
 
 function getTemplate(name = "") {
-    const templates = config?.templates;
-
-    return templates[Math.floor(Math.random() * templates.length)];
+    const templates = config.templates || [];
+    return templates[Math.floor(Math.random() * templates.length)] || "Hello!";
 }
 
 function delay(ms) {
-    return new Promise((r) => setTimeout(r, ms));
+    return new Promise((res) => setTimeout(res, ms));
 }
 
 function random(min, max) {

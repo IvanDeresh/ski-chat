@@ -24,11 +24,11 @@
         "dotenv": "^17.2.3",
         "fs": "^0.0.1-security",
         "input": "^1.0.1",
-        "node-telegram-bot-api": "^0.67.0",
         "path": "^0.12.7",
         "prebuilt-tdlib": "^0.1008058.0",
         "tdl": "^8.0.2",
         "telegram": "^2.26.22",
-        "url": "^0.11.4"
+        "url": "^0.11.4",
+        "uuid": "^9.0.1"
     }
 }

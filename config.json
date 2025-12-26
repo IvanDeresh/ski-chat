@@ -1,18 +1,7 @@
 {
     "enabled": true,
-    "chatId": 4991225150,
-    "keywords": [
-        "snowboard",
-        "snowboarding",
-        "learn snowboard",
-        "learn snowboarding",
-        "snowboard lessons",
-        "snowboard instructor",
-        "snowboard coach",
-        "beginner snowboard",
-        "first time snowboarding",
-        "go snowboarding"
-    ],
+    "chatId": "4991225150",
+    "keywords": ["12312312312"],
     "templates": [
         "Hi! 👋 I noticed your message in the chat. I'm a snowboard instructor 🏂 and offer private lessons. Feel free to message me 🙂",
         "Hey! ❄️ Saw that you're interested in snowboarding. I help beginners and improve technique. Happy to answer questions!",

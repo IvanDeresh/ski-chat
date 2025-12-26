@@ -1,12 +1,17 @@
 import TelegramBot from "node-telegram-bot-api";
 import fs from "fs";
 import dotenv from "dotenv";
-import { loadConfig } from "./loadConfig";
+import { loadConfig } from "./loadConfig.js";
+import path from "path";
+import { fileURLToPath } from "url";
 dotenv.config();
 
 const BOT_TOKEN = process.env.CONTROL_BOT_TOKEN;
 const ADMIN_ID = Number(process.env.ADMIN_ID);
-const CONFIG_FILE = "../config.json";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const CONFIG_FILE = path.resolve(__dirname, "../config.json");
 
 if (!BOT_TOKEN || !ADMIN_ID) {
     console.error("❌ CONTROL_BOT_TOKEN or ADMIN_ID missing");
@@ -37,6 +42,7 @@ Commands:
 /setchat <chatId>
 /keywords a, b, c
 /templates – set templates
+/help - help
 `
     );
 });
@@ -53,7 +59,6 @@ bot.onText(/\/on/, (msg) => {
 
 bot.onText(/\/off/, (msg) => {
     if (!isAdmin(msg)) return;
-
     const config = loadConfig();
     config.enabled = false;
     saveConfig(config);
@@ -95,7 +100,6 @@ bot.onText(/\/setchat (.+)/, (msg, match) => {
 });
 
 bot.onText(/\/keywords (.+)/, (msg, match) => {
-    console.log(isAdmin(msg));
     if (!isAdmin(msg)) return;
 
     const list = match[1]

@@ -1,7 +1,12 @@
 import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 export function loadConfig() {
-    const CONFIG_FILE = "../config.json";
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
+    const CONFIG_FILE = path.resolve(__dirname, "../config.json");
 
     if (!fs.existsSync(CONFIG_FILE)) {
         const baseConfig = {

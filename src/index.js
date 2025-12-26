@@ -26,7 +26,6 @@ function loadConfig() {
 
 let config = loadConfig();
 const chatId = BigInt(config.chatId);
-console.log(config);
 if (!config.enabled) {
     console.log("⛔ Worker disabled. Waiting...");
     throw new Error("Worker disabled. Waiting.");
@@ -56,7 +55,6 @@ if (!fs.existsSync(SESSION_FILE)) {
     });
 
     fs.writeFileSync(SESSION_FILE, client.session.save());
-    console.log(chatId);
 
     console.log("✅ Session saved");
 } else {
@@ -72,16 +70,13 @@ client.addEventHandler(async (event) => {
     if (!config.enabled) return;
 
     const msg = event.message;
-    console.log(msg);
     if (!msg?.text) return;
 
     const peer = msg.peerId;
 
     if (peer.className === "PeerChat") {
-        console.log(peer.chatId.value);
         if (peer.chatId.value !== chatId) return;
     } else if (peer.className === "PeerChannel") {
-        console.log(peer.channelId.value);
         if (peer.channelId.value !== chatId) return;
     }
 
